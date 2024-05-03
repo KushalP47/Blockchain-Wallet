@@ -10,7 +10,7 @@ func main() {
 	// Define HTTP handlers
 	http.HandleFunc("/generateAddress", api.GenerateAddress)
 	http.HandleFunc("/signTxn", api.SignTxn)
-	// http.HandleFunc("/printAccount", api.PrintAccountHandler)
+	http.HandleFunc("/getAddress", api.GetAddress)
 
 	// Start the HTTP server
 	log.Println("Server started on port 3000")
