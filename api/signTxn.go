@@ -1,30 +1,32 @@
 package api
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/http"
 	"sync"
 
+	"github.com/KushalP47/CSE542-Blockchain-Project/blockchain"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
 )
 
-type Tx struct {
-	To    common.Address
-	Value uint64
-	Nonce uint64
-}
+// type Tx struct {
+// 	To    common.Address
+// 	Value uint64
+// 	Nonce uint64
+// }
 
-type SignedTx struct {
-	To      common.Address
-	Value   uint64
-	Nonce   uint64
-	V, R, S *big.Int // signature values
-}
+// type SignedTx struct {
+// 	To      common.Address
+// 	Value   uint64
+// 	Nonce   uint64
+// 	V, R, S *big.Int // signature values
+// }
 
 func SignTxn(w http.ResponseWriter, r *http.Request) {
 	// Sign transaction
@@ -38,7 +40,7 @@ func SignTxn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx := Tx{
+	tx := blockchain.Txn{
 		To:    req.To,
 		Value: req.Value,
 		Nonce: req.Nonce,
@@ -46,13 +48,18 @@ func SignTxn(w http.ResponseWriter, r *http.Request) {
 
 	// hash of txn
 	h := Hash(&tx)
-	sig, err := crypto.Sign(h[:], myCredentials.PrivateKey)
+	privatekey, err := crypto.HexToECDSA("4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356")
+	if err != nil {
+		panic(err)
+	}
+
+	sig, err := crypto.Sign(h[:], privatekey)
 	if err != nil {
 		panic(err)
 	}
 
 	R, S, V := decodeSignature(sig)
-	signedTx := SignedTx{
+	signedTx := blockchain.SignedTx{
 		To:    tx.To,
 		Value: tx.Value,
 		Nonce: tx.Nonce,
@@ -60,18 +67,22 @@ func SignTxn(w http.ResponseWriter, r *http.Request) {
 		R:     R,
 		S:     S,
 	}
-	fmt.Println("Tx hash", HashSigned(&signedTx).Hex())
+	encodedSignedTxn, err := rlp.EncodeToBytes(signedTx)
+	if err != nil {
+		panic(err)
+	}
 
+	fmt.Println(hex.EncodeToString(encodedSignedTxn))
 	// Send signed transaction
-	json.NewEncoder(w).Encode(HashSigned(&signedTx))
+	json.NewEncoder(w).Encode(hex.EncodeToString(encodedSignedTxn))
 }
 
 // HashSigned returns the tx hash
-func HashSigned(tx *SignedTx) common.Hash {
+func HashSigned(tx *blockchain.SignedTx) common.Hash {
 	return rlpHash(tx)
 }
 
-func Hash(tx *Tx) common.Hash {
+func Hash(tx *blockchain.Txn) common.Hash {
 	return rlpHash([]interface{}{
 		tx.To,
 		tx.Value,
